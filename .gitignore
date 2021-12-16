@@ -13,3 +13,15 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
+
+.DS_Store
+
+# Editor directories
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+*.dir-locals.el
