@@ -13,8 +13,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 type directory struct {
@@ -71,11 +71,11 @@ func (d directory) Detect(u *url.URL) bool {
 	return fi.IsDir()
 }
 
-func (d directory) Config(u *url.URL) artifact.Config {
+func (d directory) Config(u *url.URL) artifacts.Config {
 	c := &directoryConfig{
 		config{Reference: u.String()},
 	}
-	return artifact.ToConfig(c, artifact.WithConfigMediaType(consts.FileDirectoryConfigMediaType))
+	return artifacts.ToConfig(c, artifacts.WithConfigMediaType(consts.FileDirectoryConfigMediaType))
 }
 
 type directoryConfig struct {

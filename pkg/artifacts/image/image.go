@@ -6,10 +6,10 @@ import (
 	gv1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/remote"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
 )
 
-var _ artifact.OCI = (*Image)(nil)
+var _ artifacts.OCI = (*Image)(nil)
 
 func (i *Image) MediaType() string {
 	mt, err := i.Image.MediaType()

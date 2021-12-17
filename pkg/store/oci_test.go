@@ -8,7 +8,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	"github.com/google/go-containerregistry/pkg/v1/random"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
 )
 
 var (
@@ -48,7 +48,7 @@ func TestNewOCI(t *testing.T) {
 
 			moci := genArtifact(t, tt.args.ref)
 
-			if _, err := s.Add(ctx, moci, tt.args.ref); err != nil {
+			if _, err := s.AddOCI(ctx, moci, tt.args.ref); err != nil {
 				t.Fatal(err)
 			}
 		})
@@ -56,7 +56,7 @@ func TestNewOCI(t *testing.T) {
 }
 
 func setup(t *testing.T) func() error {
-	tmpdir, err := os.MkdirTemp("", "oci-artifacts")
+	tmpdir, err := os.MkdirTemp("", "ocil")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,7 +86,7 @@ func (m mockArtifact) RawConfig() ([]byte, error) {
 	return m.RawConfigFile()
 }
 
-func genArtifact(t *testing.T, ref string) artifact.OCI {
+func genArtifact(t *testing.T, ref string) artifacts.OCI {
 	img, err := random.Image(1024, 3)
 	if err != nil {
 		t.Fatal(err)

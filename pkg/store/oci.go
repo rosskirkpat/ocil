@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -21,8 +22,8 @@ import (
 	"oras.land/oras-go/pkg/content"
 	"oras.land/oras-go/pkg/target"
 
-	content2 "github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 var _ target.Target = (*OCI)(nil)
@@ -88,110 +89,6 @@ func (o *OCI) SaveIndex() error {
 		return err
 	}
 	return os.WriteFile(o.path(consts.OCIImageIndexFile), data, 0644)
-}
-
-func (o *OCI) Add(ctx context.Context, oci content2.OCI, reference string) (ocispec.Descriptor, error) {
-	// write blob layers concurrently
-	layers, err := oci.Layers()
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	var g errgroup.Group
-	for _, layer := range layers {
-		layer := layer
-		g.Go(func() error {
-			return o.writeLayer(ctx, layer)
-		})
-	}
-	if err := g.Wait(); err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	// Write config blob
-	cdata, err := oci.RawConfig()
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	if err := o.writeBytes(ctx, cdata); err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	// Write manifest blob
-	m, err := oci.Manifest()
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	mdata, err := json.Marshal(m)
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	if err := o.writeBytes(ctx, mdata); err != nil {
-		return ocispec.Descriptor{}, err
-	}
-
-	// Build index
-	midx := ocispec.Descriptor{
-		MediaType: string(m.MediaType),
-		Digest:    digest.FromBytes(mdata),
-		Size:      int64(len(mdata)),
-		Annotations: map[string]string{
-			ocispec.AnnotationRefName: reference,
-		},
-		URLs:     nil,
-		Platform: nil,
-	}
-	o.nameMap.Store(reference, midx)
-	if err := o.LoadIndex(); err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	return ocispec.Descriptor{}, o.SaveIndex()
-}
-
-func (o *OCI) writeBytes(ctx context.Context, data []byte) error {
-	d := digest.FromBytes(data)
-
-	blobPath, err := o.ensureBlob(d.Algorithm().String(), d.Hex())
-	if err != nil {
-		return err
-	}
-
-	return o.writeStream(ctx, blobPath, io.NopCloser(bytes.NewBuffer(data)))
-}
-
-func (o *OCI) writeStream(ctx context.Context, path string, rc io.ReadCloser) error {
-	if _, err := os.Stat(path); err == nil {
-		return nil
-	}
-
-	w, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer w.Close()
-	if _, err := io.Copy(w, rc); err != nil {
-		return err
-	}
-	return nil
-}
-
-func (o *OCI) writeLayer(ctx context.Context, layer v1.Layer) error {
-	h, err := layer.Digest()
-	if err != nil {
-		return err
-	}
-
-	blobpath, err := o.ensureBlob(h.Algorithm, h.Hex)
-	if err != nil {
-		return err
-	}
-
-	rc, err := layer.Compressed()
-	if err != nil {
-		return err
-	}
-	return o.writeStream(ctx, blobpath, rc)
 }
 
 // Resolve attempts to resolve the reference into a name and descriptor.
@@ -263,13 +160,17 @@ func (o *OCI) Walk(fn func(reference string, desc ocispec.Descriptor) error) err
 	if err := o.LoadIndex(); err != nil {
 		return err
 	}
+
+	var errst []string
 	o.nameMap.Range(func(key, value interface{}) bool {
 		if err := fn(key.(string), value.(ocispec.Descriptor)); err != nil {
-			return false
+			errst = append(errst, err.Error())
 		}
-
 		return true
 	})
+	if errst != nil {
+		return fmt.Errorf(strings.Join(errst, "; "))
+	}
 	return nil
 }
 
@@ -342,4 +243,128 @@ func (p *ociPusher) Push(ctx context.Context, d ocispec.Descriptor) (ccontent.Wr
 
 	w := content.NewIoContentWriter(f, content.WithInputHash(d.Digest), content.WithOutputHash(d.Digest))
 	return w, nil
+}
+
+// TODO: The following is pretty redundant, re-write using ccontent.Writer, or just wait for oras v2 :shrug:
+
+// AddOCI will add an OCI artifact to the store
+func (o *OCI) AddOCI(ctx context.Context, oci artifacts.OCI, reference string) (ocispec.Descriptor, error) {
+	// write blob layers concurrently
+	layers, err := oci.Layers()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	var g errgroup.Group
+	for _, layer := range layers {
+		layer := layer
+		g.Go(func() error {
+			return o.writeLayer(ctx, layer)
+		})
+	}
+	if err := g.Wait(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	// Write config blob
+	cdata, err := oci.RawConfig()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := o.writeBytes(ctx, cdata); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	// Write manifest blob
+	m, err := oci.Manifest()
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	mdata, err := json.Marshal(m)
+	if err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	if err := o.writeBytes(ctx, mdata); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+
+	// Build index
+	midx := ocispec.Descriptor{
+		MediaType: string(m.MediaType),
+		Digest:    digest.FromBytes(mdata),
+		Size:      int64(len(mdata)),
+		Annotations: map[string]string{
+			ocispec.AnnotationRefName: reference,
+		},
+		URLs:     nil,
+		Platform: nil,
+	}
+	o.nameMap.Store(reference, midx)
+	if err := o.LoadIndex(); err != nil {
+		return ocispec.Descriptor{}, err
+	}
+	return ocispec.Descriptor{}, o.SaveIndex()
+}
+
+func (o *OCI) AddCollection(ctx context.Context, coll artifacts.OCICollection) ([]ocispec.Descriptor, error) {
+	cnts, err := coll.Contents()
+	if err != nil {
+		return nil, err
+	}
+
+	var descs []ocispec.Descriptor
+	for ref, oci := range cnts {
+		desc, err := o.AddOCI(ctx, oci, ref)
+		if err != nil {
+			return nil, err
+		}
+		descs = append(descs, desc)
+	}
+	return descs, nil
+}
+
+func (o *OCI) writeBytes(ctx context.Context, data []byte) error {
+	d := digest.FromBytes(data)
+
+	blobPath, err := o.ensureBlob(d.Algorithm().String(), d.Hex())
+	if err != nil {
+		return err
+	}
+
+	return o.writeStream(ctx, blobPath, io.NopCloser(bytes.NewBuffer(data)))
+}
+
+func (o *OCI) writeStream(ctx context.Context, path string, rc io.ReadCloser) error {
+	if _, err := os.Stat(path); err == nil {
+		return nil
+	}
+
+	w, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer w.Close()
+	if _, err := io.Copy(w, rc); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (o *OCI) writeLayer(ctx context.Context, layer v1.Layer) error {
+	h, err := layer.Digest()
+	if err != nil {
+		return err
+	}
+
+	blobpath, err := o.ensureBlob(h.Algorithm, h.Hex)
+	if err != nil {
+		return err
+	}
+
+	rc, err := layer.Compressed()
+	if err != nil {
+		return err
+	}
+	return o.writeStream(ctx, blobpath, rc)
 }

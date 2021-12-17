@@ -1,4 +1,4 @@
-package artifact
+package artifacts
 
 import (
 	"bytes"
@@ -8,7 +8,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	"github.com/google/go-containerregistry/pkg/v1/types"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 var _ partial.Describable = (*marshallableConfig)(nil)

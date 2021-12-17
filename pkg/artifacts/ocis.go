@@ -1,4 +1,4 @@
-package artifact
+package artifacts
 
 import "github.com/google/go-containerregistry/pkg/v1"
 
@@ -15,7 +15,7 @@ type OCI interface {
 	Layers() ([]v1.Layer, error)
 }
 
-type Collection interface {
+type OCICollection interface {
 	// Contents returns the list of contents in the collection
 	Contents() (map[string]OCI, error)
 }

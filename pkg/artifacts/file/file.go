@@ -7,13 +7,13 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/partial"
 	gtypes "github.com/google/go-containerregistry/pkg/v1/types"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact/file/getter"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/artifacts/file/getter"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 // interface guard
-var _ artifact.OCI = (*File)(nil)
+var _ artifacts.OCI = (*File)(nil)
 
 // File implements the OCI interface for File API objects. API spec information is
 // stored into the Path field.
@@ -23,7 +23,7 @@ type File struct {
 	client *getter.Client
 
 	computed    bool
-	config      artifact.Config
+	config      artifacts.Config
 	blob        gv1.Layer
 	manifest    *gv1.Manifest
 	annotations map[string]string

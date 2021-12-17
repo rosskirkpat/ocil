@@ -6,7 +6,7 @@ import (
 	v1 "github.com/google/go-containerregistry/pkg/v1"
 	gtypes "github.com/google/go-containerregistry/pkg/v1/types"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 type Opener func() (io.ReadCloser, error)

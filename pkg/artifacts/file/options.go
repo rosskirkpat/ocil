@@ -1,8 +1,8 @@
 package file
 
 import (
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact/file/getter"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/artifacts/file/getter"
 )
 
 type Option func(*File)
@@ -15,7 +15,7 @@ func WithClient(c *getter.Client) Option {
 
 func WithConfig(obj interface{}, mediaType string) Option {
 	return func(f *File) {
-		f.config = artifact.ToConfig(obj, artifact.WithConfigMediaType(mediaType))
+		f.config = artifacts.ToConfig(obj, artifacts.WithConfigMediaType(mediaType))
 	}
 }
 

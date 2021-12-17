@@ -9,8 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 type Http struct{}
@@ -55,11 +55,11 @@ func (h Http) Detect(u *url.URL) bool {
 	return false
 }
 
-func (h *Http) Config(u *url.URL) artifact.Config {
+func (h *Http) Config(u *url.URL) artifacts.Config {
 	c := &httpConfig{
 		config{Reference: u.String()},
 	}
-	return artifact.ToConfig(c, artifact.WithConfigMediaType(consts.FileHttpConfigMediaType))
+	return artifacts.ToConfig(c, artifacts.WithConfigMediaType(consts.FileHttpConfigMediaType))
 }
 
 type httpConfig struct {

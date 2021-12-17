@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/afero"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact/file"
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact/file/getter"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/artifacts/file"
+	"github.com/rancherfederal/ocil/pkg/artifacts/file/getter"
+	"github.com/rancherfederal/ocil/pkg/consts"
 )
 
 var (

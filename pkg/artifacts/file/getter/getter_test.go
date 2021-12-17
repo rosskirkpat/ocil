@@ -6,7 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/rancherfederal/oci-artifacts/pkg/artifact/file/getter"
+	"github.com/rancherfederal/ocil/pkg/artifacts/file/getter"
 )
 
 func TestClient_Detect(t *testing.T) {

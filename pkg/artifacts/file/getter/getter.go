@@ -10,9 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"oras.land/oras-go/pkg/content"
 
-	content2 "github.com/rancherfederal/oci-artifacts/pkg/artifact"
-	"github.com/rancherfederal/oci-artifacts/pkg/consts"
-	"github.com/rancherfederal/oci-artifacts/pkg/layer"
+	content2 "github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/consts"
+	"github.com/rancherfederal/ocil/pkg/layer"
 )
 
 type Client struct {
