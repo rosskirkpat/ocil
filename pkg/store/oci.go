@@ -304,7 +304,7 @@ func (o *OCI) AddOCI(ctx context.Context, oci artifacts.OCI, reference string) (
 	if err := o.LoadIndex(); err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	return ocispec.Descriptor{}, o.SaveIndex()
+	return midx, o.SaveIndex()
 }
 
 func (o *OCI) AddOCICollection(ctx context.Context, coll artifacts.OCICollection) ([]ocispec.Descriptor, error) {
