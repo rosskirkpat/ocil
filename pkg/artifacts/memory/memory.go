@@ -19,10 +19,17 @@ type Memory struct {
 	config      artifacts.Config
 }
 
+type defaultConfig struct {
+	MediaType string `json:"mediaType,omitempty"`
+}
+
 func NewMemory(data []byte, mt string, opts ...Option) *Memory {
 	blob := static.NewLayer(data, types.MediaType(mt))
+
+	cfg := defaultConfig{MediaType: consts.MemoryConfigMediaType}
 	m := &Memory{
-		blob: blob,
+		blob:   blob,
+		config: artifacts.ToConfig(cfg),
 	}
 
 	for _, opt := range opts {
@@ -41,10 +48,15 @@ func (m *Memory) Manifest() (*v1.Manifest, error) {
 		return nil, err
 	}
 
+	cfgDesc, err := partial.Descriptor(m.config)
+	if err != nil {
+		return nil, err
+	}
+
 	manifest := &v1.Manifest{
 		SchemaVersion: 2,
 		MediaType:     types.MediaType(m.MediaType()),
-		Config:        v1.Descriptor{},
+		Config:        *cfgDesc,
 		Layers:        []v1.Descriptor{*layer},
 		Annotations:   m.annotations,
 	}
@@ -53,6 +65,9 @@ func (m *Memory) Manifest() (*v1.Manifest, error) {
 }
 
 func (m *Memory) RawConfig() ([]byte, error) {
+	if m.config == nil {
+		return []byte(`{}`), nil
+	}
 	return m.config.Raw()
 }
 
