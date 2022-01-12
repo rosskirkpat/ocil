@@ -20,8 +20,8 @@ import (
 )
 
 type Layout struct {
+	*content.OCI
 	Root  string
-	store *content.OCI
 	cache layer.Cache
 }
 
@@ -44,8 +44,8 @@ func NewLayout(rootdir string, opts ...Options) (*Layout, error) {
 	}
 
 	l := &Layout{
-		Root:  rootdir,
-		store: ociStore,
+		Root: rootdir,
+		OCI:  ociStore,
 	}
 
 	for _, opt := range opts {
@@ -144,7 +144,7 @@ func (l *Layout) AddOCI(ctx context.Context, oci artifacts.OCI, ref string) (oci
 		Platform: nil,
 	}
 
-	return idx, l.store.AddIndex(idx)
+	return idx, l.OCI.AddIndex(idx)
 }
 
 // AddOCICollection .
@@ -190,14 +190,14 @@ func (l *Layout) Flush(ctx context.Context) error {
 // Copy will copy a given reference to a given target.Target
 // 		This is essentially a wrapper around oras.Copy, but locked to this content store
 func (l *Layout) Copy(ctx context.Context, ref string, to target.Target, toRef string) (ocispec.Descriptor, error) {
-	return oras.Copy(ctx, l.store, ref, to, toRef,
+	return oras.Copy(ctx, l.OCI, ref, to, toRef,
 		oras.WithAdditionalCachedMediaTypes(consts.DockerManifestSchema2))
 }
 
 // CopyAll performs bulk copy operations on the stores oci layout to a provided target.Target
 func (l *Layout) CopyAll(ctx context.Context, to target.Target, toMapper func(string) (string, error)) ([]ocispec.Descriptor, error) {
 	var descs []ocispec.Descriptor
-	err := l.store.Walk(func(reference string, desc ocispec.Descriptor) error {
+	err := l.OCI.Walk(func(reference string, desc ocispec.Descriptor) error {
 		toRef := ""
 		if toMapper != nil {
 			tr, err := toMapper(reference)
@@ -223,7 +223,7 @@ func (l *Layout) CopyAll(ctx context.Context, to target.Target, toMapper func(st
 
 // Identify is a helper function that will identify a human-readable content type given a descriptor
 func (l *Layout) Identify(ctx context.Context, desc ocispec.Descriptor) string {
-	rc, err := l.store.Fetch(ctx, desc)
+	rc, err := l.OCI.Fetch(ctx, desc)
 	if err != nil {
 		return ""
 	}
