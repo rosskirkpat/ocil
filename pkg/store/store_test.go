@@ -1,4 +1,4 @@
-package store
+package store_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-containerregistry/pkg/v1/random"
 
 	"github.com/rancherfederal/ocil/pkg/artifacts"
+	"github.com/rancherfederal/ocil/pkg/store"
 )
 
 var (
@@ -16,7 +17,7 @@ var (
 	root string
 )
 
-func TestNewOCI(t *testing.T) {
+func TestLayout_AddOCI(t *testing.T) {
 	teardown := setup(t)
 	defer teardown()
 
@@ -26,7 +27,6 @@ func TestNewOCI(t *testing.T) {
 	tests := []struct {
 		name    string
 		args    args
-		want    *OCI
 		wantErr bool
 	}{
 		{
@@ -34,23 +34,24 @@ func TestNewOCI(t *testing.T) {
 			args: args{
 				ref: "hello/world:v1",
 			},
-			want:    nil,
 			wantErr: false,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s, err := NewOCI(root)
+			s, err := store.NewLayout(root)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("NewOCI() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-
 			moci := genArtifact(t, tt.args.ref)
 
-			if _, err := s.AddOCI(ctx, moci, tt.args.ref); err != nil {
-				t.Fatal(err)
+			got, err := s.AddOCI(ctx, moci, tt.args.ref)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("AddOCI() error = %v, wantErr %v", err, tt.wantErr)
+				return
 			}
+			_ = got
 		})
 	}
 }
