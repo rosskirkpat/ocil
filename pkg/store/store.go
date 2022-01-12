@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 
+	v1 "github.com/google/go-containerregistry/pkg/v1"
+	"github.com/google/go-containerregistry/pkg/v1/static"
 	"github.com/opencontainers/go-digest"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/sync/errgroup"
@@ -76,7 +78,7 @@ func (l *Layout) AddOCI(ctx context.Context, oci artifacts.OCI, ref string) (oci
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	if err := l.writeBytes(ctx, mdata); err != nil {
+	if err := l.writeBlobData(mdata); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
@@ -86,7 +88,9 @@ func (l *Layout) AddOCI(ctx context.Context, oci artifacts.OCI, ref string) (oci
 		return ocispec.Descriptor{}, err
 	}
 
-	if err := l.writeBytes(ctx, cdata); err != nil {
+	static.NewLayer(cdata, "")
+
+	if err := l.writeBlobData(cdata); err != nil {
 		return ocispec.Descriptor{}, err
 	}
 
@@ -97,35 +101,10 @@ func (l *Layout) AddOCI(ctx context.Context, oci artifacts.OCI, ref string) (oci
 	}
 
 	var g errgroup.Group
-	for _, layer := range layers {
-		layer := layer
+	for _, lyr := range layers {
+		lyr := lyr
 		g.Go(func() error {
-			h, err := layer.Digest()
-			if err != nil {
-				return err
-			}
-
-			w, err := l.writerAt(h.Algorithm, h.Hex)
-			if err != nil {
-				return err
-			}
-			defer w.Close()
-
-			// Skip the layer if there's already something there
-			// NOTE: We're implicitly relying on CAS without actually validating, might want to change this
-			if s, _ := w.Stat(); s.Size() != 0 {
-				return nil
-			}
-
-			rc, err := layer.Compressed()
-			if err != nil {
-				return err
-			}
-
-			if _, err := io.Copy(w, rc); err != nil {
-				return err
-			}
-			return nil
+			return l.writeLayer(lyr)
 		})
 	}
 	if err := g.Wait(); err != nil {
@@ -241,34 +220,39 @@ func (l *Layout) Identify(ctx context.Context, desc ocispec.Descriptor) string {
 	return m.Config.MediaType
 }
 
-// NOTES: Should really just properly use oras to do this, but we'll be lazy and wait for oras v2
-
-func (l *Layout) writerAt(alg string, hex string) (*os.File, error) {
-	dir := filepath.Join(l.Root, "blobs", alg)
-	if err := os.MkdirAll(dir, os.ModePerm); err != nil && !os.IsExist(err) {
-		return nil, err
-	}
-
-	blobPath := filepath.Join(dir, hex)
-
-	// Skip entirely if something exists, assume layer is present already
-	if _, err := os.Stat(blobPath); err == nil {
-		return nil, nil
-	}
-	return os.Create(blobPath)
+func (l *Layout) writeBlobData(data []byte) error {
+	blob := static.NewLayer(data, "") // NOTE: MediaType isn't actually used in the writing
+	return l.writeLayer(blob)
 }
 
-func (l *Layout) writeBytes(ctx context.Context, data []byte) error {
-	d := digest.FromBytes(data)
+func (l *Layout) writeLayer(layer v1.Layer) error {
+	d, err := layer.Digest()
+	if err != nil {
+		return err
+	}
 
-	w, err := l.writerAt(d.Algorithm().String(), d.Hex())
+	r, err := layer.Compressed()
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Join(l.Root, "blobs", d.Algorithm)
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil && !os.IsExist(err) {
+		return err
+	}
+
+	blobPath := filepath.Join(dir, d.Hex)
+	// Skip entirely if something exists, assume layer is present already
+	if _, err := os.Stat(blobPath); err == nil {
+		return nil
+	}
+
+	w, err := os.Create(blobPath)
 	if err != nil {
 		return err
 	}
 	defer w.Close()
 
-	if _, err := w.Write(data); err != nil {
-		return err
-	}
-	return nil
+	_, err = io.Copy(w, r)
+	return err
 }

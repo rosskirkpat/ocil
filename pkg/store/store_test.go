@@ -52,6 +52,12 @@ func TestLayout_AddOCI(t *testing.T) {
 				return
 			}
 			_ = got
+
+			_, err = s.AddOCI(ctx, moci, tt.args.ref)
+			if err != nil {
+				t.Errorf("AddOCI() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
 		})
 	}
 }
