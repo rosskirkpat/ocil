@@ -2,6 +2,7 @@ package getter
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/url"
 
@@ -56,30 +57,58 @@ func (c *Client) LayerFrom(ctx context.Context, source string) (v1.Layer, error)
 	if err != nil {
 		return nil, err
 	}
+
+	g, err := c.getterFrom(u)
+	if err != nil {
+		if errors.Is(err, ErrGetterTypeUnknown) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("create getter: %w", err)
+	}
+
+	opener := func() (io.ReadCloser, error) {
+		return g.Open(ctx, u)
+	}
+
+	annotations := make(map[string]string)
+	annotations[ocispec.AnnotationTitle] = g.Name(u)
+
+	switch g.(type) {
+	case *directory:
+		annotations[content.AnnotationUnpack] = "true"
+	}
+
+	l, err := layer.FromOpener(opener,
+		layer.WithMediaType(consts.FileLayerMediaType),
+		layer.WithAnnotations(annotations))
+	if err != nil {
+		return nil, err
+	}
+	return l, nil
+}
+
+func (c *Client) ContentFrom(ctx context.Context, source string) (io.ReadCloser, error) {
+	u, err := url.Parse(source)
+	if err != nil {
+		return nil, fmt.Errorf("parse source %s: %w", source, err)
+	}
+	g, err := c.getterFrom(u)
+	if err != nil {
+		if errors.Is(err, ErrGetterTypeUnknown) {
+			return nil, err
+		}
+		return nil, fmt.Errorf("create getter: %w", err)
+	}
+	return g.Open(ctx, u)
+}
+
+func (c *Client) getterFrom(srcUrl *url.URL) (Getter, error) {
 	for _, g := range c.Getters {
-		if g.Detect(u) {
-			opener := func() (io.ReadCloser, error) {
-				return g.Open(ctx, u)
-			}
-
-			annotations := make(map[string]string)
-			annotations[ocispec.AnnotationTitle] = g.Name(u)
-
-			switch g.(type) {
-			case *directory:
-				annotations[content.AnnotationUnpack] = "true"
-			}
-
-			l, err := layer.FromOpener(opener,
-				layer.WithMediaType(consts.FileLayerMediaType),
-				layer.WithAnnotations(annotations))
-			if err != nil {
-				return nil, err
-			}
-			return l, nil
+		if g.Detect(srcUrl) {
+			return g, nil
 		}
 	}
-	return nil, errors.Wrapf(ErrGetterTypeUnknown, "%s", source)
+	return nil, errors.Wrapf(ErrGetterTypeUnknown, "source %s", srcUrl.String())
 }
 
 func (c *Client) Name(source string) string {
