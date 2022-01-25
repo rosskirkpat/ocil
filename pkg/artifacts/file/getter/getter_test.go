@@ -75,10 +75,9 @@ func TestClient_Name(t *testing.T) {
 	teardown := setup(t)
 	defer teardown()
 
-	c := getter.NewClient(getter.ClientOptions{})
-
 	type args struct {
 		source string
+		opts   getter.ClientOptions
 	}
 	tests := []struct {
 		name string
@@ -89,6 +88,7 @@ func TestClient_Name(t *testing.T) {
 			name: "should correctly name a file with an extension",
 			args: args{
 				source: fileWithExt,
+				opts:   getter.ClientOptions{},
 			},
 			want: "file.yaml",
 		},
@@ -96,12 +96,22 @@ func TestClient_Name(t *testing.T) {
 			name: "should correctly name a directory",
 			args: args{
 				source: rootDir,
+				opts:   getter.ClientOptions{},
 			},
 			want: rootDir,
+		},
+		{
+			name: "should correctly override a files name",
+			args: args{
+				source: fileWithExt,
+				opts:   getter.ClientOptions{NameOverride: "myfile"},
+			},
+			want: "myfile",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			c := getter.NewClient(tt.args.opts)
 			if got := c.Name(tt.args.source); got != tt.want {
 				t.Errorf("Name() = %v, want %v", got, tt.want)
 			}

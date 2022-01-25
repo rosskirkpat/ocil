@@ -21,8 +21,10 @@ type Client struct {
 	Options ClientOptions
 }
 
-// TODO: Make some valid ClientOptions
-type ClientOptions struct{}
+// ClientOptions provides options for the client
+type ClientOptions struct {
+	NameOverride string
+}
 
 var (
 	ErrGetterTypeUnknown = errors.New("no getter type found matching reference")
@@ -71,7 +73,7 @@ func (c *Client) LayerFrom(ctx context.Context, source string) (v1.Layer, error)
 	}
 
 	annotations := make(map[string]string)
-	annotations[ocispec.AnnotationTitle] = g.Name(u)
+	annotations[ocispec.AnnotationTitle] = c.Name(source)
 
 	switch g.(type) {
 	case *directory:
@@ -112,6 +114,9 @@ func (c *Client) getterFrom(srcUrl *url.URL) (Getter, error) {
 }
 
 func (c *Client) Name(source string) string {
+	if c.Options.NameOverride != "" {
+		return c.Options.NameOverride
+	}
 	u, err := url.Parse(source)
 	if err != nil {
 		return source

@@ -20,9 +20,8 @@ var _ artifacts.OCI = (*File)(nil)
 type File struct {
 	Path string
 
-	client *getter.Client
-
 	computed    bool
+	client      *getter.Client
 	config      artifacts.Config
 	blob        gv1.Layer
 	manifest    *gv1.Manifest
@@ -43,6 +42,7 @@ func NewFile(path string, opts ...Option) *File {
 	return f
 }
 
+// Name is the name of the file's reference
 func (f *File) Name(path string) string {
 	return f.client.Name(path)
 }
@@ -79,7 +79,7 @@ func (f *File) compute() error {
 		return nil
 	}
 
-	ctx := context.Background()
+	ctx := context.TODO()
 	blob, err := f.client.LayerFrom(ctx, f.Path)
 	if err != nil {
 		return err
