@@ -41,7 +41,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1 // indirect
 	github.com/vbatts/tar-split v0.11.2 // indirect
 	golang.org/x/net v0.0.0-20211112202133-69e39bad7dc2 // indirect
-	golang.org/x/sys v0.0.0-20211110154304-99a53858aa08 // indirect
+	golang.org/x/sys v0.1.0 // indirect
 	golang.org/x/text v0.3.7 // indirect
 	google.golang.org/genproto v0.0.0-20211111162719-482062a4217b // indirect
 	google.golang.org/grpc v1.42.0 // indirect
